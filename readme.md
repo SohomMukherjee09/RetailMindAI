@@ -59,3 +59,20 @@ Successfully compared three models on a shared hold-out set, selected SVM using 
 
 **Next:** Improve churn detection by tuning classification thresholds and analyzing false negatives.
 
+# Day 04 — Feature Engineering & Ensembles
+
+## Phase-1 Deliverable
+
+Engineered four domain features: tenure bucket, charge ratio, month-to-month contract flag, and online-security flag. Each candidate uses a leakage-safe preprocessing pipeline. `SelectKBest(f_classif, k=30)` is fitted inside cross-validation folds.
+
+| Model | CV Recall | Test Recall | Test F1 | Test ROC-AUC |
+|---|---:|---:|---:|---:|
+| Day 3 SVM (recorded) | **0.8355** | **0.8209** | 0.5876 | 0.8093 |
+| XGBoost + SelectKBest | 0.7940 | 0.7995 | 0.6242 | **0.8405** |
+| Random Forest + SelectKBest | 0.7492 | 0.7380 | 0.6216 | 0.8329 |
+| Random Forest | 0.7378 | 0.7460 | **0.6277** | 0.8394 |
+
+## Day 4 Outcome
+
+XGBoost with SelectKBest is the strongest new Day 4 ensemble, improving test ROC-AUC and F1 over the Day 3 SVM. The Day 3 SVM remains the recall leader, so it should be retained when recall is the sole model-selection metric. The fitted Day 4 XGBoost pipeline, including preprocessing and feature selection, is saved as `models/churn_pipeline_day4.joblib`.
+

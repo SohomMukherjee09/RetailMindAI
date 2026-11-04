@@ -1,0 +1,46 @@
+{
+  "project": "RetailMind AI",
+  "increment": "Day 4",
+  "selection_metric": "5-fold stratified CV recall",
+  "production_model": "XGBoost + SelectKBest",
+  "saved_model": "..\\models\\churn_pipeline_day4.joblib",
+  "engineered_features": [
+    "tenure_bucket",
+    "charge_ratio",
+    "is_month_to_month",
+    "has_online_security"
+  ],
+  "feature_selection": "SelectKBest(f_classif, k=30)",
+  "results": [
+    {
+      "Model": "XGBoost + SelectKBest",
+      "CV Recall Mean": 0.79398,
+      "CV Recall Std": 0.026639,
+      "Test Recall": 0.799465,
+      "Test Precision": 0.511986,
+      "Test F1": 0.624217,
+      "Test Accuracy": 0.7445,
+      "Test ROC-AUC": 0.840547
+    },
+    {
+      "Model": "Random Forest + SelectKBest",
+      "CV Recall Mean": 0.749164,
+      "CV Recall Std": 0.017948,
+      "Test Recall": 0.737968,
+      "Test Precision": 0.536965,
+      "Test F1": 0.621622,
+      "Test Accuracy": 0.761533,
+      "Test ROC-AUC": 0.832889
+    },
+    {
+      "Model": "Random Forest",
+      "CV Recall Mean": 0.737793,
+      "CV Recall Std": 0.025785,
+      "Test Recall": 0.745989,
+      "Test Precision": 0.541748,
+      "Test F1": 0.627672,
+      "Test Accuracy": 0.765082,
+      "Test ROC-AUC": 0.839377
+    }
+  ]
+}

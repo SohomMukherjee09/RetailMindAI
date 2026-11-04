@@ -1,0 +1,31 @@
+{
+    "project": "RetailMind AI",
+    "increment": "Day 3",
+    "champion_model": "SVM",
+    "selection_metric": "5-fold stratified CV recall",
+    "best_cv_recall": 0.8354515050167224,
+    "best_parameters": {
+        "C": 0.1,
+        "break_ties": false,
+        "cache_size": 200,
+        "class_weight": "balanced",
+        "coef0": 0.0,
+        "decision_function_shape": "ovr",
+        "degree": 3,
+        "gamma": "scale",
+        "kernel": "linear",
+        "max_iter": -1,
+        "probability": true,
+        "random_state": 42,
+        "shrinking": true,
+        "tol": 0.001,
+        "verbose": false
+    },
+    "test_metrics": {
+        "accuracy": 0.6941092973740242,
+        "precision": 0.45752608047690013,
+        "recall": 0.820855614973262,
+        "f1": 0.5875598086124402,
+        "roc_auc": 0.809315663024103
+    }
+}
