@@ -76,3 +76,22 @@ Engineered four domain features: tenure bucket, charge ratio, month-to-month con
 
 XGBoost with SelectKBest is the strongest new Day 4 ensemble, improving test ROC-AUC and F1 over the Day 3 SVM. The Day 3 SVM remains the recall leader, so it should be retained when recall is the sole model-selection metric. The fitted Day 4 XGBoost pipeline, including preprocessing and feature selection, is saved as `models/churn_pipeline_day4.joblib`.
 
+
+
+# Day 05 — Neural Networks & ANN (Keras)
+
+## Deliverable
+
+`src/day05.ipynb` contains a Keras MNIST warm-up and a churn ANN using normalized inputs, two ReLU hidden layers, a sigmoid output, dropout, and early stopping on validation loss. Run the notebook from the repository root after installing TensorFlow in the project environment. It saves `models/churn_ann_day5.keras` and writes `data/reports/day5_model_comparison.csv`.
+
+## Benchmark status and interpretation
+
+The historical Phase 1 champion is the Day 3 SVM, selected for cross-validation churn recall of **0.8355** and recorded test recall of **0.8209**. The available Day 4 report used a separate engineered feature set and lists XGBoost + SelectKBest at test recall **0.7995**, F1 **0.6242**, and ROC-AUC **0.8405**. Those historical figures are context, not a head-to-head result: they do not share a verified test feature schema.
+
+The Day 5 notebook evaluates the ANN and the persisted Day 4 pipeline on the same Day 4 feature rows and split, then saves their metrics. The Day 3 SVM model artifact is not present in this repository, so its historical score cannot honestly be presented as a fresh same-row benchmark. TensorFlow is also not installed in the checked-in `.venv`; run the notebook in a TensorFlow-enabled environment to produce actual ANN metrics. No ANN outcome is claimed until that run is completed.
+
+## When to use which
+
+For this modest-sized structured churn dataset, start with the classical champion: it is cheaper to train, easier to inspect, and has a recorded recall advantage. Use the ANN only if its same-split results improve the business-priority metric enough to justify extra training and serving complexity. Neural networks become a stronger fit when RetailMind has substantially more rows, unstructured inputs such as product images/text, or shared representations across several tasks.
+
+**Next:** Day 6 moves to CNN-based product-photo categorization.
