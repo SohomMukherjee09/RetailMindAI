@@ -1,2 +1,11 @@
 .venv
 ./src/draftday04.ipynb
+./src/day01.ipynb
+./src/revised_day02.ipynb
+./docs
+./models/logistic_reg.joblib/
+./docs
+./data
+.venv_new
+./models/demand_lstm.keras
+./models
