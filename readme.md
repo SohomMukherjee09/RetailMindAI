@@ -134,7 +134,7 @@ The dataset contains historical daily sales records for multiple stores and prod
 
 ### Dataset Characteristics
 
-- Training records: 913,000
+- Training records: 912,000
 - Number of stores: 10
 - Number of unique products: 50
 - Total store-item combinations: 500
@@ -351,7 +351,7 @@ The model was trained for 15 epochs.
 | 1 | 0.0333 | 0.0330 |
 | 5 | 0.0287 | 0.0288 |
 | 10 | 0.0284 | 0.0284 |
-| 13 | 0.0283 | 0.0277 |
+| 12 | 0.0283 | 0.0277 |
 | 15 | 0.0282 | 0.0292 |
 
 *The epoch-level MAE values are calculated on normalized sales data, whereas the final evaluation metrics are calculated after inverse transformation.*
@@ -679,7 +679,7 @@ Do not commit the raw Kaggle dataset. Follow the repository's existing `.gitigno
 ## Conclusion
 
 Day 10 introduces multi-horizon demand forecasting to RetailMind AI. An LSTM encoder–decoder with temporal attention predicts two weeks of demand from a 30-day history, while a recursively evaluated Day 9-style LSTM provides the baseline. The experiment reports overall and horizon-specific errors, visualizes attention weights, saves the Keras model, and generates multi-week test forecasts for procurement planning.
-# RetailMind AI — Day 13: Transformers & BERT
+# RetailMind AI — Day 12: Transformers & BERT
 
 ## Overview
 
@@ -740,7 +740,7 @@ Rows that do not match any category are excluded. A TF-IDF baseline and a multi-
 The notebook saves model/tokenizer artifacts under:
 
 ```text
-artifacts/day13/
+artifacts/day12/
 ├── bert_sentiment/
 └── bert_ticket_router/
 ```
@@ -748,7 +748,7 @@ artifacts/day13/
 It also exports:
 
 ```text
-artifacts/day13/day13_model_comparison.csv
+artifacts/day12/day12_model_comparison.csv
 ```
 
 The `predict_sentiment()` function demonstrates replacing the previous classical sentiment predictor with BERT inference. The ticket model is exposed through `predict_ticket_category()`.
@@ -786,7 +786,7 @@ Compare the measured BERT lift with the added training/inference cost. BERT is j
 
 ## How to run
 
-1. Open `day13_transformers_bert_text_intelligence.ipynb` in Jupyter or VS Code.
+1. Open `day12_transformers_bert_text_intelligence.ipynb` in Jupyter or VS Code.
 2. Use a Python environment with PyTorch installed.
 3. Install the required packages if needed:
 
@@ -802,8 +802,8 @@ pip install -U transformers datasets accelerate scikit-learn pandas numpy
 ## Suggested Git commit
 
 ```bash
-git add day13_transformers_bert_text_intelligence.ipynb README_Day13.md
-git commit -m "Add Day 13 BERT sentiment and ticket routing"
+git add day12_transformers_bert_text_intelligence.ipynb README_Day12.md
+git commit -m "Add Day 12 BERT sentiment and ticket routing"
 git push
 ```
 
