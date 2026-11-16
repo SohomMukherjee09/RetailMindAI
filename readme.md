@@ -534,3 +534,148 @@ The saved model provides a foundation for subsequent inventory-planning function
 ---
 
 *RetailMind AI — An incremental end-to-end retail intelligence platform.*
+# RetailMind AI — Day 10: Seq2Seq & Attention Forecasting
+
+## Overview
+
+Day 10 upgrades the RetailMind AI demand forecasting module from the Day 9 single-step LSTM to a **multi-horizon sequence-to-sequence (Seq2Seq) model with temporal attention**.
+
+The model reads the previous 30 days of sales and predicts the next 14 days in one forward pass. An attention layer allows each decoder forecast step to weight the encoder's historical hidden states differently.
+
+The implementation uses TensorFlow / Keras for neural-network modeling. Pandas and NumPy are used for data preparation and metric calculations.
+
+## Dataset and continuity with Day 9
+
+This increment carries forward the dataset actually used in the Day 9 implementation:
+
+- **Dataset:** Store Item Demand Forecasting
+- **Training file:** `data/store_item_demand/train.csv`
+- **Test file:** `data/store_item_demand/test.csv`
+- **Series identifiers:** `store`, `item`
+- **Target:** daily `sales`
+- **History window:** 30 days
+- **Forecast horizon:** 14 days
+- **Evaluation holdout:** final 30 days per series; the first 14 days are used for the comparable forecast evaluation.
+
+The notebook also includes a basic Rossmann input branch (`Store`, `Date`, `Sales`) if that dataset is used instead. The primary configuration follows the Store Item Demand data from Day 9.
+
+## Architecture
+
+### Encoder
+
+An LSTM encoder reads the 30-day historical sequence and returns:
+- The full sequence of hidden states.
+- The final hidden state.
+- The final cell state.
+
+### Decoder
+
+The encoder's final hidden state is repeated across the 14 forecast positions. A decoder LSTM initialized with the encoder states produces a sequence of decoder outputs.
+
+### Temporal attention
+
+Keras `Attention` compares decoder outputs with all encoder hidden states. For each future time step, it generates a context vector that summarizes the relevant parts of the 30-day history.
+
+The context vector is concatenated with the decoder output and passed through a time-distributed Dense layer to produce one sales prediction per forecast day.
+
+**Input shape:** `(batch, 30, 1)`  
+**Output shape:** `(batch, 14, 1)`
+
+## Day 9 baseline comparison
+
+A Day 9-style single-step LSTM is trained in the notebook using:
+- 30-day look-back
+- LSTM with 32 units
+- Dropout of 0.2
+- Dense output layer
+- Adam optimizer and MSE loss
+
+At evaluation time, the single-step model is run recursively: each predicted day is appended to the input window to forecast the next day. Both models are evaluated on the same held-out 14-day periods.
+
+## Evaluation
+
+The notebook calculates:
+- **MAE:** mean absolute error in sales units.
+- **RMSE:** root mean squared error in sales units.
+- **MAPE:** percentage error over non-zero actual values.
+- **Horizon-wise MAE:** separate error for each day ahead.
+
+It also plots:
+- Training and validation loss.
+- Actual versus predicted demand over a 14-day example.
+- Attention weights across the 30 historical input days and 14 forecast steps.
+
+No metric values are hard-coded in this README. Run the notebook and fill in the table below with the generated results.
+
+| Model | MAE | RMSE | MAPE (non-zero actuals) |
+|---|---:|---:|---:|
+| Day 9 single-step LSTM (recursive) | _Run notebook_ | _Run notebook_ | _Run notebook_ |
+| Day 10 Seq2Seq + Attention | _Run notebook_ | _Run notebook_ | _Run notebook_ |
+
+The model should be considered an improvement only if the measured errors support that conclusion. Compare horizon-wise performance as well as the overall metrics.
+
+## Attention analysis
+
+The attention visualization is a matrix with:
+- Rows representing forecast days 1–14.
+- Columns representing historical days in the 30-day encoder window.
+- Cell values representing the attention weight assigned to each historical position.
+
+The visualization helps inspect which parts of the recent history the decoder uses at different forecast horizons. Attention weights are descriptive model diagnostics; they should not be interpreted as proof of causation.
+
+## Multi-week inference and artifacts
+
+The trained Seq2Seq model predicts future test dates in consecutive 14-day blocks. For each block, predictions are appended to the history before the next block is generated. The final block is trimmed to match the number of requested test dates.
+
+Generated artifacts:
+
+```text
+models/
+├── demand_seq2seq_attention.keras
+└── demand_lstm_day09_baseline.keras
+
+data/reports/
+├── day10_model_comparison.csv
+├── day10_horizon_metrics.csv
+└── day10_per_series_metrics.csv
+
+submission_seq2seq_attention.csv
+```
+
+The saved attention model is also accompanied in the notebook by an attention-visualization model built from the trained network.
+
+## Challenges and design considerations
+
+1. **Multi-step error accumulation:** recursive one-step forecasts can accumulate errors as predictions are fed back into the next input window.
+2. **Sequence-to-sequence learning:** the decoder must learn the full future sequence rather than a single next-day value.
+3. **Attention dimensions:** attention aligns each decoder time step with the encoder's complete history; the attention matrix therefore has 14 forecast rows and 30 history columns.
+4. **Scaling:** one global min-max scaler is fitted on the pre-holdout training values and reused for all series and predictions.
+5. **Compute and memory:** sliding windows can create a large training set. A seven-day stride and a configurable maximum number of windows keep the lab run manageable.
+6. **Limited features:** this version uses sales history only. Calendar effects, promotions, holidays, prices, and store metadata are not included.
+7. **Evaluation scope:** the comparable evaluation horizon is 14 days, even though the holdout contains 30 days. The remaining holdout days are not included in the headline metrics.
+
+## How to run
+
+1. Place the dataset in `data/store_item_demand/` with `train.csv` and `test.csv`.
+2. Open `src/day10_seq2seq_attention_forecasting.ipynb` (or the downloaded notebook location) in Jupyter or VS Code.
+3. Activate the TensorFlow environment used for the RetailMind forecasting work.
+4. Run all cells in order.
+5. Review the overall and horizon-wise metrics, plus the attention heatmap.
+6. Copy the actual metric values into the evaluation table above.
+7. Inspect the generated Kaggle submission before uploading it.
+
+If the notebook is running slowly, reduce `MAX_TRAIN_WINDOWS`, `EPOCHS`, or `BATCH_SIZE`. Keep the evaluation split and forecast horizon unchanged when comparing model variants.
+
+## Suggested Git commit
+
+```bash
+git add src/day10_seq2seq_attention_forecasting.ipynb README_Day10.md
+git commit -m "Day 10: Add Seq2Seq attention demand forecasting"
+git push
+```
+
+Do not commit the raw Kaggle dataset. Follow the repository's existing `.gitignore` rules for data files and generated model weights.
+
+## Conclusion
+
+Day 10 introduces multi-horizon demand forecasting to RetailMind AI. An LSTM encoder–decoder with temporal attention predicts two weeks of demand from a 30-day history, while a recursively evaluated Day 9-style LSTM provides the baseline. The experiment reports overall and horizon-specific errors, visualizes attention weights, saves the Keras model, and generates multi-week test forecasts for procurement planning.
