@@ -679,3 +679,134 @@ Do not commit the raw Kaggle dataset. Follow the repository's existing `.gitigno
 ## Conclusion
 
 Day 10 introduces multi-horizon demand forecasting to RetailMind AI. An LSTM encoder–decoder with temporal attention predicts two weeks of demand from a 30-day history, while a recursively evaluated Day 9-style LSTM provides the baseline. The experiment reports overall and horizon-specific errors, visualizes attention weights, saves the Keras model, and generates multi-week test forecasts for procurement planning.
+# RetailMind AI — Day 13: Transformers & BERT
+
+## Overview
+
+This increment upgrades RetailMind AI's text-intelligence capability using a pretrained **BERT (`bert-base-uncased`)** model from Hugging Face Transformers.
+
+The notebook covers two NLP tasks:
+
+1. **Amazon review sentiment classification** — fine-tune BERT to classify reviews as positive or negative.
+2. **Support-ticket routing** — derive a small set of ticket categories from review text, then fine-tune the same BERT backbone for multi-class routing.
+
+It also builds TF-IDF + Logistic Regression baselines so the transformer can be evaluated against a lighter classical approach.
+
+## Dataset
+
+- **Source:** Hugging Face `fancyzhx/amazon_polarity` (Amazon Polarity).
+- **Fields used:** `title`, `content`, and `label`.
+- **Target:** `0 = negative`, `1 = positive`.
+- **Sampling:** the notebook uses a reproducible subset (12,000 training examples and 3,000 test examples by default) to keep the exercise manageable in a 60-minute lab.
+- **Text preparation:** title and review content are concatenated into one text field.
+
+The full Amazon Polarity dataset is substantially larger. Increase the sample sizes only when compute resources allow.
+
+## Implementation
+
+### 1. Classical sentiment baseline
+
+A scikit-learn pipeline applies:
+- TF-IDF vectorization (unigrams and bigrams)
+- Logistic Regression
+
+This establishes a reference score on the same sampled train/test data.
+
+### 2. BERT sentiment classifier
+
+- Load `bert-base-uncased` tokenizer.
+- Tokenize review text with truncation and a maximum sequence length of 128.
+- Convert token IDs and attention masks into PyTorch datasets.
+- Fine-tune `AutoModelForSequenceClassification` with two output classes.
+- Evaluate accuracy, precision, recall, F1-score, and the confusion matrix.
+
+### 3. Support-ticket routing
+
+Amazon Polarity does not contain support-ticket categories. To demonstrate the routing workflow, the notebook creates **weak labels** using keyword rules for four categories:
+
+| Category | Example matching terms |
+|---|---|
+| `delivery` | shipping, delivery, arrived, late, tracking |
+| `billing` | price, charged, payment, refund, cost |
+| `product_quality` | broken, defective, damaged, faulty, quality |
+| `account_support` | account, login, password, customer service |
+
+Rows that do not match any category are excluded. A TF-IDF baseline and a multi-class BERT model are trained on the resulting data.
+
+**Data-quality warning:** these are heuristic labels, not verified support-ticket annotations. Their evaluation scores measure agreement with the keyword-derived labels and should not be presented as real-world ticket-routing accuracy. A production system should use actual support tickets with human-reviewed labels.
+
+### 4. Model persistence and pipeline integration
+
+The notebook saves model/tokenizer artifacts under:
+
+```text
+artifacts/day13/
+├── bert_sentiment/
+└── bert_ticket_router/
+```
+
+It also exports:
+
+```text
+artifacts/day13/day13_model_comparison.csv
+```
+
+The `predict_sentiment()` function demonstrates replacing the previous classical sentiment predictor with BERT inference. The ticket model is exposed through `predict_ticket_category()`.
+
+For a deployed service, load each model once at application startup rather than reloading it for every request. Keep the tokenizer, model, label mapping, and preprocessing logic versioned together.
+
+## Evaluation
+
+The notebook reports:
+- Accuracy for TF-IDF and BERT sentiment models.
+- Per-class precision, recall, and F1 for sentiment.
+- Confusion matrix for sentiment.
+- Accuracy and per-class precision, recall, and F1 for ticket routing.
+- A CSV comparison of both models across both tasks.
+
+**Results are generated when the notebook is executed.** No metric values are hard-coded in this README because they depend on the sampled data, package versions, hardware, and training run. Add your actual results below after execution.
+
+| Task | Model | Accuracy |
+|---|---|---:|
+| Review sentiment | TF-IDF + Logistic Regression | _Fill after run_ |
+| Review sentiment | Fine-tuned BERT | _Fill after run_ |
+| Ticket routing | TF-IDF + Logistic Regression | _Fill after run_ |
+| Ticket routing | Fine-tuned BERT | _Fill after run_ |
+
+Compare the measured BERT lift with the added training/inference cost. BERT is justified only if the quality improvement is meaningful for the product's requirements.
+
+## Challenges and considerations
+
+1. **Dataset size:** the complete Amazon Polarity corpus is large, so a subset is used for a time-boxed lab.
+2. **Compute requirements:** fine-tuning BERT is much heavier than fitting TF-IDF. A CUDA GPU is recommended; CPU execution may take significantly longer.
+3. **Sequence length:** limiting inputs to 128 tokens controls memory and training time, but truncates some long reviews.
+4. **Synthetic ticket labels:** review text is not the same as real support-ticket text. Keyword-derived labels are suitable for demonstrating the workflow, not production validation.
+5. **Class imbalance:** category counts and per-class metrics should be checked. Accuracy alone can hide poor performance on minority classes.
+6. **Deployment cost:** model size, latency, memory, and throughput should be measured before replacing a lightweight model in a production service.
+
+## How to run
+
+1. Open `day13_transformers_bert_text_intelligence.ipynb` in Jupyter or VS Code.
+2. Use a Python environment with PyTorch installed.
+3. Install the required packages if needed:
+
+```bash
+pip install -U transformers datasets accelerate scikit-learn pandas numpy
+```
+
+4. Run the notebook from top to bottom.
+5. Review the metrics and weak-label examples.
+6. Copy the actual metric values into the evaluation table above.
+7. Integrate the saved sentiment model into the existing RetailMind sentiment module.
+
+## Suggested Git commit
+
+```bash
+git add day13_transformers_bert_text_intelligence.ipynb README_Day13.md
+git commit -m "Add Day 13 BERT sentiment and ticket routing"
+git push
+```
+
+## Conclusion
+
+Day 13 adds a transformer-based text classification path to RetailMind AI. BERT is fine-tuned for review sentiment and reused as the backbone for a support-ticket routing demonstration. The notebook benchmarks both tasks against TF-IDF and persists the trained artifacts for integration. The final model choice should be based on measured quality gains, verified ticket labels, and deployment cost—not accuracy alone.
