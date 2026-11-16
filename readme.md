@@ -809,4 +809,4 @@ git push
 
 ## Conclusion
 
-Day 13 adds a transformer-based text classification path to RetailMind AI. BERT is fine-tuned for review sentiment and reused as the backbone for a support-ticket routing demonstration. The notebook benchmarks both tasks against TF-IDF and persists the trained artifacts for integration. The final model choice should be based on measured quality gains, verified ticket labels, and deployment cost—not accuracy alone.
+Day 12 adds a transformer-based text classification path to RetailMind AI. BERT is fine-tuned for review sentiment and reused as the backbone for a support-ticket routing demonstration. The notebook benchmarks both tasks against TF-IDF and persists the trained artifacts for integration. The final model choice should be based on measured quality gains, verified ticket labels, and deployment cost—not accuracy alone.
