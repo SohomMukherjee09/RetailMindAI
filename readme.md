@@ -679,6 +679,171 @@ Do not commit the raw Kaggle dataset. Follow the repository's existing `.gitigno
 ## Conclusion
 
 Day 10 introduces multi-horizon demand forecasting to RetailMind AI. An LSTM encoder–decoder with temporal attention predicts two weeks of demand from a 30-day history, while a recursively evaluated Day 9-style LSTM provides the baseline. The experiment reports overall and horizon-specific errors, visualizes attention weights, saves the Keras model, and generates multi-week test forecasts for procurement planning.
+# Day 11 — GANs & VAEs: Image Augmentation
+## RetailMind AI Increment
+
+## Scenario
+
+RetailMind AI is an end-to-end retail AI platform built incrementally, one module per day. The Day 11 increment uses a Generative Adversarial Network (GAN) to create synthetic fashion-product images for an under-represented category.
+
+The goal is to improve class balance and then re-measure the existing Day 6/7 image classifier using per-class metrics.
+
+## Objective
+
+Build a TensorFlow/Keras image-augmentation workflow that:
+
+1. Reads the Fashion Product Images dataset.
+2. counts product categories;
+3. identifies or accepts a rare target category;
+4. trains a DCGAN on that category;
+5. inspects generated samples for realism and mode collapse;
+6. saves only approved synthetic images;
+7. folds them into a balanced training directory; and
+8. compares per-class recall before and after augmentation.
+
+## Dataset
+
+Use the Kaggle dataset:
+
+```text
+paramaggarwal/fashion-product-images-small
+```
+
+Expected structure after extraction:
+
+```text
+RetailMind/
+├── data/
+│   └── fashion-product-images-small/
+│       ├── styles.csv
+│       └── images/
+│           ├── 1163.jpg
+│           ├── 1164.jpg
+│           └── ...
+```
+
+The notebook uses the `masterCategory` column by default. You may switch to `subCategory` or `articleType` if that matches the Day 6/7 classifier.
+
+## Libraries
+
+Model and image-processing code uses TensorFlow/Keras. Python standard-library modules are used for paths, CSV parsing, file copying, and reports.
+
+## Approach
+
+### 1. Identify the thin category
+
+The notebook counts categories in `styles.csv`. Set `TARGET_CATEGORY` from the weakest class in the Phase-2 confusion matrix. If left as `None`, the notebook selects the smallest category with at least `MIN_REAL_IMAGES` usable images.
+
+### 2. Prepare images
+
+Images are:
+
+- decoded with TensorFlow;
+- resized to `64 × 64`;
+- converted to RGB; and
+- normalized to `[-1, 1]` for the generator's `tanh` output.
+
+### 3. Train a DCGAN
+
+The generator maps a random latent vector to a `64 × 64 × 3` image.
+
+The discriminator learns to distinguish real target-category images from generated images.
+
+Training alternates between:
+
+```text
+Discriminator: real images → 1, generated images → 0
+Generator: generated images → discriminator should output 1
+```
+
+### 4. Quality and mode-collapse checks
+
+The notebook saves sample grids during training and calculates a simple diversity score from pairwise distances between generated images.
+
+This score is only a warning signal. Final retention requires visual inspection. Reject images with severe artifacts, repeated near-identical samples, incorrect silhouettes, or unrealistic colors/backgrounds.
+
+### 5. Build the augmented training set
+
+Approved images are saved under:
+
+```text
+artifacts/day11/approved_synthetic/<target-category>/
+```
+
+The notebook can then copy them into a separate balanced training directory. It does not overwrite the original dataset.
+
+### 6. Re-measure fairness and accuracy
+
+Use the same Day 6/7 classifier architecture, split, preprocessing, random seed, and training settings before and after augmentation. Compare:
+
+- overall accuracy;
+- per-class recall;
+- macro-average recall;
+- target-category recall; and
+- confusion matrices.
+
+A fair comparison changes only the training images, not the test set.
+
+## Suggested repository structure
+
+```text
+RetailMind/
+├── data/
+│   └── fashion-product-images-small/
+├── artifacts/
+│   └── day11/
+│       ├── checkpoints/
+│       ├── sample_grids/
+│       ├── generated_candidates/
+│       ├── approved_synthetic/
+│       └── augmentation_report.csv
+├── notebooks/
+│   └── RetailMind_Day11_GAN_Image_Augmentation.ipynb
+└── README_Day11_GAN_Image_Augmentation.md
+```
+
+## Important configuration
+
+Update these notebook variables before running:
+
+```python
+DATASET_ROOT = PROJECT_ROOT / "data" / "fashion-product-images-small"
+CATEGORY_COLUMN = "masterCategory"
+TARGET_CATEGORY = None
+MIN_REAL_IMAGES = 50
+IMAGE_SIZE = 64
+BATCH_SIZE = 32
+EPOCHS = 50
+```
+
+For a serious run, 50 epochs is a starting point rather than a guarantee. GAN quality depends on category size, visual variability, and training stability.
+
+## Acceptance criteria
+
+- A target category is selected from the Phase-2 evidence.
+- Only target-category images train the GAN.
+- Generated sample grids are inspected.
+- Mode-collapse evidence is documented.
+- Synthetic images are stored separately from originals.
+- The original test set remains unchanged.
+- Per-class metrics are compared before and after augmentation.
+- Accuracy/fairness claims are based on recorded metrics, not visual impression alone.
+
+## Caveats
+
+Synthetic images can reinforce dataset bias, create duplicates, or reduce classifier quality. Do not assume that more images automatically improve fairness. Keep synthetic-to-real ratios conservative at first, such as 25% to 50% additional samples for the thin category, then validate against the unchanged test set.
+
+## Git upload
+
+```bash
+git add README_Day11_GAN_Image_Augmentation.md notebooks/RetailMind_Day11_GAN_Image_Augmentation.ipynb
+git add artifacts/day11/augmentation_report.csv
+git commit -m "Add Day 11 GAN image augmentation increment"
+git push
+```
+
+Avoid committing large checkpoints or thousands of generated images unless Git LFS is configured.
+
 # RetailMind AI — Day 12: Transformers & BERT
 
 ## Overview
