@@ -95,7 +95,656 @@ The Day 5 notebook evaluates the ANN and the persisted Day 4 pipeline on the sam
 For this modest-sized structured churn dataset, start with the classical champion: it is cheaper to train, easier to inspect, and has a recorded recall advantage. Use the ANN only if its same-split results improve the business-priority metric enough to justify extra training and serving complexity. Neural networks become a stronger fit when RetailMind has substantially more rows, unstructured inputs such as product images/text, or shared representations across several tasks.
 
 **Next:** Day 6 moves to CNN-based product-photo categorization.
+# Day 8 — Explainable Vision
+## RetailMind AI Increment
 
+## Scenario
+
+RetailMind AI is an end-to-end retail AI platform built one module at a time.
+
+Day 7 introduced a transfer-learning image classifier for fashion products.
+
+Day 8 makes that classifier **explainable**.
+
+Instead of returning only:
+
+```text
+Prediction: Footwear
+Confidence: 0.91
+```
+
+RetailMind can now also show **which image regions contributed to that prediction**.
+
+---
+
+# Objective
+
+Add Grad-CAM explainability to the existing Day-7 transfer-learning classifier.
+
+The workflow is:
+
+```text
+Product Image
+      ↓
+Day-7 Classifier
+      ↓
+Predicted Product Category
+      ↓
+Gradients
+      ↓
+Final Convolutional Features
+      ↓
+Grad-CAM
+      ↓
+Heatmap
+      ↓
+Image + Heatmap Overlay
+```
+
+No new classifier is trained during Day 8.
+
+---
+
+# Dataset
+
+Reuse the dataset from Day 7:
+
+```text
+Fashion Product Images
+Kaggle: paramaggarwal/fashion-product-images-small
+```
+
+Expected structure:
+
+```text
+RetailMind/
+│
+├── data/
+│   └── fashion-product-images-small/
+│       ├── styles.csv
+│       └── images/
+│           ├── 1163.jpg
+│           ├── 1164.jpg
+│           └── ...
+│
+├── day7_best.keras
+├── day8_explainable_vision.ipynb
+└── README_day8_explainable_vision.md
+```
+
+---
+
+# Libraries
+
+The vision and explainability workflow uses:
+
+```text
+TensorFlow
+Keras
+Matplotlib
+```
+
+TensorFlow/Keras handles:
+
+- model loading;
+- image preprocessing;
+- inference;
+- convolutional feature maps;
+- gradient calculation;
+- heatmap resizing; and
+- artifact saving.
+
+Matplotlib is used for visual inspection and alpha-blended overlays.
+
+---
+
+# Reuse Day-7 Model
+
+Day 8 does **not** train another classifier.
+
+The existing Day-7 model is loaded using:
+
+```python
+keras.models.load_model(...)
+```
+
+The saved model is expected to contain the transfer-learning classifier from the previous increment.
+
+Example:
+
+```text
+Product Image
+      ↓
+MobileNetV2
+      ↓
+Feature Extraction
+      ↓
+Classification Head
+      ↓
+Product Category
+```
+
+Day 8 adds explainability around this existing prediction pipeline.
+
+---
+
+# Important: Class Names
+
+The class names must have exactly the **same order used during Day-7 training**.
+
+For example:
+
+```python
+CLASS_NAMES = [
+    "Accessories",
+    "Apparel",
+    "Footwear",
+    "Free Items",
+    "Personal Care",
+    "Sporting Goods"
+]
+```
+
+This is only an example.
+
+If the Day-7 classifier used different classes or a different order, update `CLASS_NAMES` before running Grad-CAM.
+
+The number of class names must equal:
+
+```python
+model.output_shape[-1]
+```
+
+---
+
+# Image Preprocessing
+
+Day-8 inference preprocessing must exactly match Day 7.
+
+If the Day-7 saved Keras model already contains:
+
+```text
+Resizing
+Rescaling
+MobileNetV2 preprocessing
+```
+
+then Day 8 should send the image into that model without repeating those transformations.
+
+If Day-7 preprocessing occurred outside the saved model, `prepare_for_model()` must be updated to reproduce it.
+
+Incorrect preprocessing can produce incorrect predictions and therefore meaningless Grad-CAM explanations.
+
+---
+
+# What is Grad-CAM?
+
+Grad-CAM means:
+
+```text
+Gradient-weighted Class Activation Mapping
+```
+
+It helps answer:
+
+> Which spatial areas of this product image contributed most strongly to the predicted category?
+
+Suppose RetailMind predicts:
+
+```text
+Footwear
+```
+
+Grad-CAM examines how strongly different convolutional feature maps influenced the `Footwear` score.
+
+The important feature maps are combined to create a heatmap.
+
+---
+
+# Grad-CAM Workflow
+
+```text
+Image
+  ↓
+CNN / Transfer Model
+  ↓
+Final Convolutional Feature Maps
+  ↓
+Predicted Class Score
+  ↓
+Calculate Gradients
+  ↓
+Average Gradients
+  ↓
+Weight Feature Maps
+  ↓
+Combine Maps
+  ↓
+ReLU
+  ↓
+Normalize
+  ↓
+Grad-CAM Heatmap
+```
+
+---
+
+# Why the Final Convolutional Layer?
+
+Early CNN layers usually learn simple patterns such as:
+
+```text
+edges
+corners
+lines
+textures
+```
+
+Later convolutional layers contain higher-level spatial information about object structure.
+
+Grad-CAM therefore commonly uses the final convolutional feature map because it combines:
+
+```text
+high-level semantic information
++
+spatial information
+```
+
+---
+
+# Gradient Calculation
+
+The notebook uses:
+
+```python
+tf.GradientTape()
+```
+
+Conceptually we calculate:
+
+```text
+How much would the predicted class score change
+if each convolutional feature map changed?
+```
+
+Large gradients indicate feature maps that strongly influence the prediction.
+
+---
+
+# Global Average of Gradients
+
+The gradients are averaged spatially.
+
+Conceptually:
+
+```text
+Feature Map 1 → weight 1
+Feature Map 2 → weight 2
+Feature Map 3 → weight 3
+...
+```
+
+These weights tell Grad-CAM how important each feature map is for the selected class.
+
+---
+
+# Creating the Heatmap
+
+The weighted feature maps are combined:
+
+```text
+Feature Map 1 × Gradient Weight 1
++
+Feature Map 2 × Gradient Weight 2
++
+...
+```
+
+Negative values are removed using:
+
+```text
+ReLU
+```
+
+The result is normalized to:
+
+```text
+0 → low relevance
+1 → high relevance
+```
+
+---
+
+# Heatmap Overlay
+
+The Grad-CAM map is resized to the original model-input image size.
+
+Matplotlib overlays it on top of the product image using alpha blending:
+
+```text
+Original Product Image
+        +
+Semi-Transparent Heatmap
+        ↓
+Explainable Prediction
+```
+
+Typical heatmap interpretation:
+
+```text
+Red / Yellow → stronger influence
+Blue         → weaker influence
+```
+
+The exact colors come from Matplotlib's `jet` color map.
+
+---
+
+# RetailMind Explainability Function
+
+The notebook combines classification and explanation into:
+
+```python
+explain_prediction(image_path)
+```
+
+The function:
+
+1. loads the product image;
+2. preprocesses it using the Day-7 setup;
+3. predicts its class;
+4. records model confidence;
+5. calculates Grad-CAM;
+6. resizes the heatmap;
+7. displays the explanation overlay; and
+8. returns structured explanation data.
+
+Conceptually:
+
+```text
+explain_prediction("product.jpg")
+
+        ↓
+
+Prediction:
+Footwear
+
+Confidence:
+0.91
+
+        +
+
+Grad-CAM overlay
+```
+
+This provides one interface for RetailMind's explainable vision functionality.
+
+---
+
+# Good Grad-CAM Evidence
+
+A useful explanation should generally highlight the actual object.
+
+Examples:
+
+### Shoe
+
+Expected activation:
+
+```text
+shoe body
+sole
+upper shape
+```
+
+### Shirt
+
+Expected activation:
+
+```text
+torso region
+sleeves
+garment boundaries
+```
+
+### Watch
+
+Expected activation:
+
+```text
+watch face
+strap
+```
+
+### Bag
+
+Expected activation:
+
+```text
+bag body
+handles
+overall silhouette
+```
+
+---
+
+# Warning Signs
+
+Grad-CAM can reveal suspicious model behaviour.
+
+For example, if RetailMind predicts:
+
+```text
+Footwear
+```
+
+but the heatmap focuses primarily on:
+
+```text
+white background
+image corner
+watermark
+border
+```
+
+the model may have learned a **spurious correlation**.
+
+That means it may be predicting using irrelevant image characteristics instead of the product itself.
+
+---
+
+# Grad-CAM Limitations
+
+Grad-CAM should not be interpreted as absolute proof of why a neural network produced a prediction.
+
+It is a useful diagnostic visualization.
+
+Limitations include:
+
+- heatmaps can be coarse;
+- different CNN layers can produce different explanations;
+- high activation does not prove causation;
+- explanations can look convincing even for incorrect predictions;
+- low-resolution feature maps lose precise object boundaries.
+
+Therefore Grad-CAM should be combined with:
+
+```text
+prediction accuracy
+confusion matrix
+manual inspection
+domain knowledge
+```
+
+---
+
+# Explain Several Images
+
+One explanation is not enough.
+
+The notebook evaluates multiple product images.
+
+When reviewing Grad-CAM results, ask:
+
+```text
+Does attention consistently stay on the product?
+
+Does it move to the correct product parts?
+
+Does it focus on backgrounds?
+
+Do incorrect predictions have suspicious attention?
+
+Are different categories using reasonable visual regions?
+```
+
+This provides a basic qualitative trust check.
+
+---
+
+# Saved Artifact
+
+The notebook saves a heatmap under:
+
+```text
+artifacts/day8/gradcam_heatmap.png
+```
+
+The existing Day-7 classifier remains the prediction model.
+
+Day 8 adds explanation around that model rather than replacing it.
+
+---
+
+# Phase-2 Architecture
+
+After completing Day 8, the RetailMind vision flow becomes:
+
+```text
+                     RetailMind Vision
+                           │
+                           ▼
+                     Product Image
+                           │
+                           ▼
+                Day-7 Transfer Classifier
+                           │
+                 ┌─────────┴─────────┐
+                 ▼                   ▼
+          Product Category        Confidence
+                 │
+                 ▼
+          Day-8 Grad-CAM
+                 │
+                 ▼
+         Explanation Heatmap
+                 │
+                 ▼
+        Explainable Prediction
+```
+
+This closes the explainable-classification portion of Phase 2.
+
+---
+
+# Not Required for Day 8
+
+The project specification mentions:
+
+```text
+Image Segmentation
+Background Removal
+```
+
+These are concepts only for this increment.
+
+They are **not implemented** in the Day-8 notebook.
+
+The required implementation is:
+
+```text
+Day-7 classifier
++
+Grad-CAM
++
+heatmap overlay
++
+combined explain_prediction() function
+```
+
+---
+
+# Day 8 Deliverables
+
+The completed project contains:
+
+- loading the Day-7 transfer-learning model;
+- loading Fashion Product Images;
+- consistent Day-7 inference preprocessing;
+- identification of convolutional feature maps;
+- `tf.GradientTape` gradient calculation;
+- Grad-CAM weight calculation;
+- Grad-CAM heatmap generation;
+- heatmap normalization;
+- heatmap resizing;
+- Matplotlib image overlay;
+- predictions and confidence values;
+- multiple-image explanation testing;
+- saved explanation artifacts; and
+- a reusable `explain_prediction()` function.
+
+---
+
+# Final Checklist
+
+Before Git upload:
+
+- [ ] Day-7 model loads successfully.
+- [ ] No new model is trained.
+- [ ] `CLASS_NAMES` matches Day-7 exactly.
+- [ ] Image preprocessing matches Day-7.
+- [ ] Product prediction succeeds.
+- [ ] Final convolutional layer is identified.
+- [ ] Grad-CAM heatmap is generated.
+- [ ] Heatmap is normalized.
+- [ ] Overlay displays correctly.
+- [ ] Multiple images are inspected.
+- [ ] Attention is checked for background shortcuts.
+- [ ] `explain_prediction()` works.
+- [ ] Heatmap artifact is saved.
+- [ ] Notebook runs from top to bottom.
+
+---
+
+# Git Upload
+
+```bash
+git add day8_explainable_vision.ipynb README_day8_explainable_vision.md
+git commit -m "Add Day 8 Grad-CAM explainable vision"
+git push
+```
+
+If the Day-7 `.keras` model is large, keep it out of normal Git unless Git LFS is configured.
+
+---
+
+# Key Takeaway
+
+Before Day 8, RetailMind could answer:
+
+```text
+What product category is this?
+```
+
+After Day 8, RetailMind can answer:
+
+```text
+What product category is this?
+        +
+Which part of the image influenced that decision?
+```
+
+That turns the existing classifier into a more transparent and inspectable vision module.
 
 # Day 09 — LSTM-Based Demand Forecasting
 ### RetailMind AI | Time-Series Forecasting Module
