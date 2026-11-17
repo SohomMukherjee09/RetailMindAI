@@ -810,3 +810,844 @@ git push
 ## Conclusion
 
 Day 12 adds a transformer-based text classification path to RetailMind AI. BERT is fine-tuned for review sentiment and reused as the backbone for a support-ticket routing demonstration. The notebook benchmarks both tasks against TF-IDF and persists the trained artifacts for integration. The final model choice should be based on measured quality gains, verified ticket labels, and deployment cost—not accuracy alone.
+# Day 13 — NLP & Classical Text Processing
+## RetailMind AI Increment
+
+## Scenario
+
+RetailMind AI is an end-to-end retail AI platform built incrementally, one module per day.
+
+Each daily increment adds a new AI/ML capability to the same RetailMind codebase.
+
+For **Day 13**, the goal is to add a **review analytics and sentiment analysis module** using classical Natural Language Processing techniques.
+
+Customer reviews contain valuable information about:
+
+- Customer satisfaction
+- Product quality
+- Product issues
+- Delivery experience
+- Common complaints
+- Positive product features
+- Overall customer sentiment
+
+This increment converts raw customer review text into useful sentiment signals.
+
+---
+
+# Objective
+
+Build a classical NLP pipeline that processes Amazon product reviews and predicts whether a review has **positive or negative sentiment**.
+
+The complete workflow is:
+
+```text
+Amazon Reviews
+      ↓
+Text Cleaning
+      ↓
+Lowercasing
+      ↓
+Noise Removal
+      ↓
+Tokenization
+      ↓
+Stopword Removal
+      ↓
+TF-IDF Vectorization
+      ↓
+Classical ML Classifier
+      ↓
+Sentiment Prediction
+      ↓
+Model Evaluation
+      ↓
+Informative Terms
+      ↓
+Persist Model
+```
+
+This model acts as the **classical sentiment baseline** for RetailMind.
+
+Later increments can replace or compare this model with more advanced NLP models such as BERT.
+
+---
+
+# Dataset
+
+The recommended dataset is:
+
+## Amazon Product Reviews
+
+Dataset:
+
+```text
+amazon_polarity
+```
+
+The dataset contains Amazon customer reviews labelled by sentiment.
+
+A Kaggle Amazon reviews dataset may also be used.
+
+Example:
+
+```text
+Review:
+"This product is excellent and works perfectly."
+
+Sentiment:
+Positive
+```
+
+Another example:
+
+```text
+Review:
+"Very poor quality. It stopped working after two days."
+
+Sentiment:
+Negative
+```
+
+---
+
+# Dataset Features
+
+Depending on the version of the dataset, columns may include:
+
+```text
+title
+content
+label
+```
+
+For this project, the main inputs are:
+
+```text
+content → customer review
+label   → sentiment
+```
+
+The notebook renames these internally as:
+
+```text
+review
+sentiment
+```
+
+If the dataset uses different column names, update:
+
+```python
+TEXT_COLUMN = "content"
+LABEL_COLUMN = "label"
+```
+
+---
+
+# Libraries Used
+
+The Day 13 increment focuses on:
+
+```text
+NLTK
+scikit-learn
+```
+
+The notebook also uses:
+
+```text
+pandas
+re
+pickle
+```
+
+for dataset handling, text cleaning, and model persistence.
+
+---
+
+# 1. Text Cleaning
+
+Raw customer reviews contain unnecessary information such as:
+
+```text
+URLs
+HTML tags
+punctuation
+numbers
+special characters
+uppercase/lowercase variations
+```
+
+Example raw review:
+
+```text
+"This Product is AMAZING!!! I loved it :) https://example.com"
+```
+
+After cleaning:
+
+```text
+product amazing loved
+```
+
+The cleaning pipeline performs:
+
+```text
+Raw Review
+    ↓
+Convert to lowercase
+    ↓
+Remove URLs
+    ↓
+Remove HTML
+    ↓
+Remove numbers
+    ↓
+Remove punctuation
+    ↓
+Tokenize words
+    ↓
+Remove stopwords
+    ↓
+Clean Review
+```
+
+---
+
+# 2. Lowercasing
+
+All text is converted to lowercase.
+
+Example:
+
+```text
+"This PRODUCT Is Amazing"
+```
+
+becomes:
+
+```text
+"this product is amazing"
+```
+
+This prevents words such as:
+
+```text
+Product
+PRODUCT
+product
+```
+
+from being treated as different words.
+
+---
+
+# 3. Noise Removal
+
+Regular expressions are used to remove unwanted characters.
+
+For example:
+
+```text
+"This product is AMAZING!!! 100% recommended."
+```
+
+may become:
+
+```text
+this product is amazing recommended
+```
+
+This reduces unnecessary variation in the text.
+
+---
+
+# 4. Tokenization
+
+Tokenization splits a sentence into individual words or tokens.
+
+Example:
+
+```text
+"This product is really good"
+```
+
+becomes:
+
+```text
+["This", "product", "is", "really", "good"]
+```
+
+NLTK tokenization is used for this step.
+
+---
+
+# 5. Stopword Removal
+
+Stopwords are common words that often provide little sentiment information.
+
+Examples:
+
+```text
+the
+is
+a
+an
+and
+of
+to
+in
+```
+
+Example:
+
+```text
+"this product is really good"
+```
+
+After stopword removal:
+
+```text
+"product really good"
+```
+
+This allows the model to focus more on meaningful terms.
+
+---
+
+# 6. TF-IDF Vectorization
+
+Machine-learning models cannot directly understand text.
+
+The cleaned reviews therefore need to be converted into numerical features.
+
+This project uses:
+
+```text
+TF-IDF
+```
+
+TF-IDF stands for:
+
+```text
+Term Frequency - Inverse Document Frequency
+```
+
+It gives more importance to useful terms while reducing the importance of extremely common words.
+
+Example:
+
+```text
+Review 1:
+"excellent product"
+
+Review 2:
+"poor product"
+```
+
+TF-IDF converts these reviews into numerical feature vectors that can be provided to the machine-learning model.
+
+---
+
+# 7. N-Grams
+
+The TF-IDF vectorizer uses:
+
+```python
+ngram_range=(1, 2)
+```
+
+This means the model can learn:
+
+### Unigrams
+
+Single words:
+
+```text
+excellent
+broken
+quality
+waste
+```
+
+### Bigrams
+
+Two-word combinations:
+
+```text
+very good
+poor quality
+highly recommend
+waste money
+```
+
+Bigrams can provide additional sentiment information compared with individual words alone.
+
+---
+
+# 8. Train/Test Split
+
+The dataset is divided into:
+
+```text
+Training Data
+Testing Data
+```
+
+Example split:
+
+```text
+80% → Training
+20% → Testing
+```
+
+The training data is used to learn the sentiment model.
+
+The testing data is kept separate and used to evaluate how well the trained model performs on unseen reviews.
+
+A fixed:
+
+```python
+random_state=42
+```
+
+is used to make the split reproducible.
+
+Stratification is also used to preserve the sentiment class distribution.
+
+---
+
+# 9. Sentiment Classification Model
+
+The classical baseline classifier used in this project is:
+
+```text
+Logistic Regression
+```
+
+The complete machine-learning pipeline is:
+
+```text
+Clean Review
+      ↓
+TF-IDF
+      ↓
+Logistic Regression
+      ↓
+Positive / Negative
+```
+
+Logistic Regression works well as a baseline for sparse TF-IDF text features.
+
+It also provides model coefficients that can be inspected to understand which terms contribute strongly to positive or negative predictions.
+
+---
+
+# 10. Scikit-Learn Pipeline
+
+TF-IDF and Logistic Regression are combined using a scikit-learn Pipeline.
+
+Conceptually:
+
+```text
+Review
+   ↓
+TfidfVectorizer
+   ↓
+LogisticRegression
+   ↓
+Prediction
+```
+
+Using a Pipeline keeps preprocessing and prediction together.
+
+It also helps prevent incorrect preprocessing of test data.
+
+The TF-IDF vectorizer is fitted using training data.
+
+The test data is only transformed using the vocabulary learned from the training data.
+
+---
+
+# 11. Model Training
+
+The model learns relationships between TF-IDF features and sentiment labels.
+
+For example, the model may learn that words such as:
+
+```text
+excellent
+perfect
+amazing
+love
+great
+```
+
+are more strongly associated with positive sentiment.
+
+Words such as:
+
+```text
+broken
+waste
+poor
+worst
+disappointed
+```
+
+may be more strongly associated with negative sentiment.
+
+The actual terms depend on the training dataset.
+
+---
+
+# 12. Model Evaluation
+
+The trained sentiment model is evaluated using multiple classification metrics.
+
+The project calculates:
+
+```text
+Accuracy
+Precision
+Recall
+F1 Score
+Classification Report
+Confusion Matrix
+```
+
+---
+
+# 13. Accuracy
+
+Accuracy measures the proportion of predictions that were correct.
+
+Formula:
+
+```text
+Accuracy = Correct Predictions / Total Predictions
+```
+
+Accuracy is useful for an overall view of model performance.
+
+---
+
+# 14. Precision
+
+Precision measures:
+
+```text
+Out of the reviews predicted as a class,
+how many predictions were correct?
+```
+
+For the positive class:
+
+```text
+Precision = TP / (TP + FP)
+```
+
+High precision means the model produces relatively few false-positive predictions.
+
+---
+
+# 15. Recall
+
+Recall measures:
+
+```text
+Out of the reviews that actually belong to a class,
+how many did the model correctly identify?
+```
+
+For the positive class:
+
+```text
+Recall = TP / (TP + FN)
+```
+
+High recall means the model misses relatively few positive reviews.
+
+---
+
+# 16. F1 Score
+
+F1 combines Precision and Recall.
+
+Formula:
+
+```text
+F1 = 2 × (Precision × Recall) / (Precision + Recall)
+```
+
+F1 is useful when both precision and recall matter.
+
+---
+
+# 17. Confusion Matrix
+
+The confusion matrix shows:
+
+```text
+True Negative
+False Positive
+False Negative
+True Positive
+```
+
+It provides more detail than accuracy alone.
+
+It helps identify whether the model is making more errors on positive or negative sentiment.
+
+---
+
+# 18. Informative Terms
+
+One important goal of the RetailMind review analytics module is not just predicting sentiment.
+
+It should also help understand **why customers are happy or unhappy**.
+
+Logistic Regression assigns coefficients to TF-IDF features.
+
+Terms with large positive coefficients are strongly associated with positive sentiment.
+
+Terms with large negative coefficients are strongly associated with negative sentiment.
+
+Example positive terms might include:
+
+```text
+excellent
+perfect
+amazing
+great
+love
+highly recommend
+```
+
+Example negative terms might include:
+
+```text
+waste
+broken
+poor
+disappointed
+worst
+poor quality
+```
+
+These terms can provide useful product-level insights.
+
+However, model coefficients show **association rather than causation**. Important findings should be checked against the original customer reviews.
+
+---
+
+# 19. Predicting New Reviews
+
+After training, RetailMind can classify previously unseen reviews.
+
+Example:
+
+```text
+Input:
+"This product is excellent and works perfectly"
+
+Prediction:
+Positive
+```
+
+Another example:
+
+```text
+Input:
+"Poor quality and completely useless"
+
+Prediction:
+Negative
+```
+
+This capability can later be integrated into a RetailMind API or dashboard.
+
+---
+
+# 20. Model Persistence
+
+Retraining the sentiment model every time RetailMind starts would be inefficient.
+
+Therefore, the trained pipeline is persisted.
+
+The saved artifact is:
+
+```text
+review_sentiment_model.pkl
+```
+
+The persisted object contains:
+
+```text
+TF-IDF Vectorizer
++
+Logistic Regression Model
+```
+
+The saved pipeline can later be loaded and used to predict new reviews without retraining.
+
+---
+
+# 21. RetailMind Integration
+
+The Day 13 increment adds a new review analytics capability to RetailMind.
+
+Conceptually:
+
+```text
+RetailMind AI
+    |
+    |-- Previous AI/ML modules
+    |
+    |-- Review Analytics
+            |
+            |-- Text Cleaning
+            |-- Tokenization
+            |-- Stopword Removal
+            |-- TF-IDF
+            |-- Sentiment Classifier
+            |-- Product Insights
+            |-- Persisted Model
+```
+
+This module remains part of the RetailMind codebase and can be reused by future increments.
+
+---
+
+# 22. Future BERT Upgrade
+
+Day 13 establishes the **classical NLP baseline**.
+
+A later increment can replace:
+
+```text
+TF-IDF
++
+Logistic Regression
+```
+
+with a transformer model such as:
+
+```text
+BERT
+```
+
+The classical model remains useful because it provides:
+
+- A performance baseline
+- Faster training
+- Lower computational requirements
+- Easier interpretation
+- Informative feature coefficients
+
+The future transformer model can then be compared against this baseline.
+
+---
+
+# Project Structure
+
+A simple project structure is:
+
+```text
+RetailMind/
+│
+├── amazon_reviews.csv
+│
+├── day13_nlp_classical_text_processing.ipynb
+│
+├── review_sentiment_model.pkl
+│
+└── README.md
+```
+
+As RetailMind grows, the model and review-processing functions can be moved into dedicated modules.
+
+---
+
+# Day 13 Workflow
+
+```text
+1. Load Amazon reviews
+        ↓
+2. Inspect dataset
+        ↓
+3. Handle missing reviews
+        ↓
+4. Lowercase text
+        ↓
+5. Remove noise
+        ↓
+6. Tokenize
+        ↓
+7. Remove stopwords
+        ↓
+8. Create cleaned reviews
+        ↓
+9. Train/Test split
+        ↓
+10. TF-IDF vectorization
+        ↓
+11. Train Logistic Regression
+        ↓
+12. Predict test sentiment
+        ↓
+13. Evaluate model
+        ↓
+14. Extract informative terms
+        ↓
+15. Predict new reviews
+        ↓
+16. Save trained pipeline
+        ↓
+17. Reload and test model
+```
+
+---
+
+# Day 13 Deliverables
+
+The completed increment contains:
+
+- Amazon review dataset loading
+- Text cleaning
+- Lowercasing
+- URL removal
+- HTML removal
+- Punctuation and noise removal
+- NLTK tokenization
+- NLTK stopword removal
+- TF-IDF feature extraction
+- Unigrams
+- Bigrams
+- Train/test splitting
+- Logistic Regression sentiment classifier
+- Accuracy
+- Precision
+- Recall
+- F1 score
+- Classification report
+- Confusion matrix
+- Informative positive terms
+- Informative negative terms
+- New-review sentiment prediction
+- Saved review sentiment model
+- Reloadable review-processing pipeline
+
+---
+
+# Conclusion
+
+In Day 13 of RetailMind AI, a complete classical NLP sentiment-analysis baseline was added to the platform.
+
+Raw Amazon customer reviews are transformed from unstructured text into numerical TF-IDF features and classified using Logistic Regression.
+
+The module not only predicts whether reviews are positive or negative but also exposes informative terms that can help identify customer satisfaction signals and recurring product issues.
+
+The trained pipeline is persisted so other RetailMind components can reuse it.
+
+This classical NLP baseline also prepares RetailMind for a future upgrade to transformer-based sentiment analysis using BERT.
